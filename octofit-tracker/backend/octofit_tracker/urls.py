@@ -17,6 +17,8 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
 from . import views
+import os
+from django.urls import re_path
 
 router = routers.DefaultRouter()
 router.register(r'teams', views.TeamViewSet)
@@ -25,8 +27,18 @@ router.register(r'activities', views.ActivityViewSet)
 router.register(r'workouts', views.WorkoutViewSet)
 router.register(r'leaderboard', views.LeaderboardViewSet)
 
+def custom_api_root(request, format=None):
+    CODESPACE_NAME = os.environ.get('CODESPACE_NAME')
+    base_url = request.build_absolute_uri('/')
+    if CODESPACE_NAME:
+        base_url = f'https://{CODESPACE_NAME}-8000.app.github.dev/'
+    return views.api_root(request._request, format=format)._replace(headers={'Location': base_url})
+
+from django.views.generic import RedirectView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.api_root, name='api-root'),
-    path('', include(router.urls)),
+    path('', RedirectView.as_view(url='/api/', permanent=False)),
+    re_path(r'^api/$', views.api_root, name='api-root'),
+    path('api/', include(router.urls)),
 ]
